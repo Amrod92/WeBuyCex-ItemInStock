@@ -1,6 +1,9 @@
-const puppeteer = require('puppeteer');
+import chalk from 'chalk';
+import puppeteer from 'puppeteer';
+import callClient from './twilio.js';
 
 async function checkStock() {
+  callClient(false);
   while (true) {
     const browser = await puppeteer.launch({
       headless: 'new',
@@ -8,7 +11,9 @@ async function checkStock() {
     const page = await browser.newPage();
 
     // Replace 'url' with the actual URL of the webpage
-    await page.goto('url');
+    await page.goto(
+      'https://uk.webuy.com/product-detail/?id=5021290096806&categoryName=playstation5-software&superCatName=gaming&title=final-fantasy-xvi&referredFrom=boxsearch&queryID=76c2bcb0bddf3c8d8deda96175ad6acc&position=1'
+    );
 
     try {
       // Wait for the element containing the stock information to load
@@ -32,7 +37,9 @@ async function checkStock() {
       }
     } catch (error) {
       console.log(
-        'The item is out of stock. The bot will now automatically restart.'
+        chalk.black.bgYellowBright.bold(
+          'The item is out of stock. The bot will now automatically restart.'
+        )
       );
       await browser.close();
     }
@@ -45,6 +52,13 @@ async function checkStock() {
 // Call the function and handle the result
 checkStock()
   .then(isInStock => {
-    console.log('The item is in stock!');
+    callClient(true);
+
+    console.log(chalk.white.bgGreenBright.bold('The item is in stock!'));
   })
-  .catch(err => console.error(err));
+  .catch(err => {
+    console.error(
+      chalk.black.bgRedBright.bold(`Whops! An error occurred: ${err}`)
+    );
+    process.exit(1);
+  });
