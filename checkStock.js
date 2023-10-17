@@ -2,6 +2,8 @@ import chalk from 'chalk';
 import puppeteer from 'puppeteer';
 import readline from 'readline';
 import callClient from './twilio.js';
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 let PRODUCT_NAME;
 
@@ -43,8 +45,6 @@ function isValidCeXURL(url) {
 }
 
 async function checkStock(url) {
-  callClient(false);
-
   while (true) {
     const browser = await puppeteer.launch({
       headless: 'new',
@@ -76,6 +76,8 @@ async function checkStock(url) {
       const isInStock = stockText.includes('In stock online');
 
       if (isInStock) {
+        let callClientConfirmation = await callClient(true, PRODUCT_NAME);
+
         // Wait for the element containing the stock information to load
         await page.waitForSelector('#onetrust-accept-btn-handler', {
           hidden: false,
@@ -98,18 +100,30 @@ async function checkStock(url) {
         });
 
         // Fill in the email and password fields
-        await page.type('#user', 'manlio92--@live.it');
-        await page.type('#pass', '123');
+        await page.type('#user', process.env.CEX_EMAIL);
+        await page.type('#pass', process.env.CEX_PASSWORD);
+
+        // Click the "Sign In" button
+        await page.click('#loginLink');
+
+        // Wait for the modal to disappear
+        await page.waitForSelector('#user', {
+          hidden: true,
+          timeout: 5000,
+        });
 
         // Take a screenshot of the logged-in state
         await page.screenshot({ path: 'logged_in.png' });
 
-        console.log(
-          chalk.white.bgGreenBright.bold(
-            `The item ${PRODUCT_NAME} is in stock!`
-          )
-        );
-        process.exit(1);
+        if (callClientConfirmation == 'Message sent!') {
+          console.log(
+            chalk.white.bgGreenBright.bold(
+              `The item ${PRODUCT_NAME} is in stock!`
+            )
+          );
+
+          setTimeout(() => process.exit(1), 2000);
+        }
       }
       await browser.close();
     } catch (error) {
